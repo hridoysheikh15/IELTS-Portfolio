@@ -1653,7 +1653,7 @@ svg {
   height: 86px;
   display: grid;
   place-items: center;
-  color: var(--white);
+  color: var(--ink);
   font-family: var(--f-head);
   font-weight: 800;
   font-size: var(--fs-14);
@@ -1664,7 +1664,7 @@ svg {
   content: "";
   position: absolute;
   inset: 0;
-  background: var(--orange);
+  background: var(--ivory);
   clip-path: polygon(
     50% 0%,
     61% 12%,
