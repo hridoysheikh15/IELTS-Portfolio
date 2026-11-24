@@ -77,13 +77,99 @@
     });
 
     /* ---------- Video modal ---------- */
-    var $vm = $("#videoModal");
-    if ($vm.length) {
-      var $frame = $vm.find("iframe");
-      $vm.on("show.bs.modal", function (e) {
-        var id = $(e.relatedTarget).data("video") || $frame.data("video");
-        $frame.attr("src", "https://www.youtube-nocookie.com/embed/" + id + "?autoplay=1&rel=0&modestbranding=1");
-      }).on("hidden.bs.modal", function () { $frame.attr("src", ""); });
+    // var $vm = $("#videoModal");
+    // if ($vm.length) {
+    //   var $frame = $vm.find("iframe");
+    //   $vm.on("show.bs.modal", function (e) {
+    //     var id = $(e.relatedTarget).data("video") || $frame.data("video");
+    //     $frame.attr("src", "https://www.youtube-nocookie.com/embed/" + id + "?autoplay=1&rel=0&modestbranding=1");
+    //   }).on("hidden.bs.modal", function () { $frame.attr("src", ""); });
+    // }
+
+    /* ---------------- Latest news — 3D parallax image ring ---------------- */
+    if ($(".news-ring").length && typeof Swiper !== "undefined") {
+      initNewsRing();
+    }
+
+    function initNewsRing() {
+      var STEP = 30;      // degrees between neighbouring cards
+      var MAX_VISIBLE = 3.4; // cards beyond this progress are hidden
+
+      function radius(sw) {
+        // Ring radius so neighbouring cards sit just apart on the circle
+        var w = $(sw.slides[0]).outerWidth() || 330;
+        var k = window.innerWidth < 576 ? 0.42 : 0.6;
+        return (w * k) / Math.sin((STEP / 2) * Math.PI / 180);
+      }
+
+      function layout(sw) {
+        var R = radius(sw);
+        $.each(sw.slides, function (i, slide) {
+          var p = slide.progress;                 // 0 = centre, ±1 = neighbours
+          var clamped = Math.max(-MAX_VISIBLE, Math.min(MAX_VISIBLE, p));
+          var angle = -clamped * STEP;            // degrees around the ring
+          var rad = angle * Math.PI / 180;
+          var x = R * Math.sin(rad);
+          var z = R * (Math.cos(rad) - 1);
+          // cancel Swiper's linear offset (virtualTranslate) and place on ring
+          var tx = -slide.swiperSlideOffset + (sw.width - slide.swiperSlideSize) / 2 + x;
+          var abs = Math.abs(p);
+          var $s = $(slide);
+
+          $s.css({
+            transform: "translate3d(" + tx + "px,0," + z + "px) rotateY(" + angle + "deg)",
+            opacity: abs > MAX_VISIBLE ? 0 : Math.max(0, 1 - abs * 0.28),
+            zIndex: 100 - Math.round(abs * 10),
+            pointerEvents: abs > 1.5 ? "none" : "auto"
+          });
+          // inner image parallax — drifts opposite to ring motion
+          $s.find(".ring-thumb img").css({
+            transform: "translate3d(" + (clamped * 9) + "%,0,0)",
+            filter: abs < 0.5 ? "none" : "saturate(" + Math.max(0.35, 1 - abs * 0.3) + ") brightness(" + Math.max(0.85, 1 - abs * 0.06) + ")"
+          });
+        });
+      }
+
+      var ring = new Swiper(".news-ring", {
+        slidesPerView: "auto",
+        centeredSlides: true,
+        loop: true,
+        loopAdditionalSlides: 3,
+        speed: 900,
+        grabCursor: true,
+        watchSlidesProgress: true,
+        virtualTranslate: true,
+        slideToClickedSlide: true,
+        keyboard: { enabled: true },
+        mousewheel: { forceToAxis: true },
+        autoplay: { delay: 4200, disableOnInteraction: false, pauseOnMouseEnter: true },
+        on: {
+          setTranslate: function (sw) { layout(sw); },
+          setTransition: function (sw, d) {
+            $(sw.slides).css("transition-duration", d + "ms")
+              .find(".ring-thumb img").css("transition-duration", d + "ms");
+          },
+          resize: function (sw) { layout(sw); }
+        }
+      });
+      layout(ring);
+      
+      // Arrow buttons — driven by jQuery (Swiper's built-in prev fails with loop + custom 3D effect)
+      var busy = false;
+      function go(step) {
+        if (busy) return;                       // ignore clicks while the ring is still turning
+        busy = true;
+        ring.autoplay && ring.autoplay.stop();
+        var n = ring.slides.length;
+        var target = (ring.realIndex + step + n) % n;   // wraps 0 → last and last → 0
+        ring.slideToLoop(target, ring.params.speed);
+        setTimeout(function () {
+          busy = false;
+          ring.autoplay && ring.autoplay.start();
+        }, ring.params.speed);
+      }
+      $(".ring-prev").on("click", function (e) { e.preventDefault(); go(-1); });
+      $(".ring-next").on("click", function (e) { e.preventDefault(); go(1); });
     }
 
     /* ---------- Offer countdown ---------- */
